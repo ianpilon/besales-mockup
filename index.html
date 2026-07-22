@@ -43,45 +43,79 @@
   }
   .demo-ribbon strong { color: #fff; }
 
-  /* ---- tier switcher ---- */
-  .tier-bar {
-    background: var(--wash);
-    border-bottom: 1px solid var(--line);
-    padding: 10px 0;
+  /* ---- sign-in demo dropdown ---- */
+  .signin-wrap { position: relative; }
+  .signin-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px -12px rgba(22,25,29,0.35);
+    min-width: 230px;
+    padding: 6px;
+    z-index: 120;
   }
-  .tier-bar .wrap {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .tier-label {
+  .signin-menu.open { display: block; }
+  .menu-label {
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.07em;
     color: var(--ink-3);
+    padding: 8px 10px 6px;
   }
-  .tier-toggle {
-    display: inline-flex;
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 3px;
-    gap: 2px;
-  }
-  .tier-toggle button {
+  .signin-menu button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
     border: none;
     background: none;
-    padding: 6px 16px;
-    border-radius: 999px;
-    font-size: 13px;
+    text-align: left;
+    font-size: 14px;
     font-weight: 600;
-    color: var(--ink-2);
+    color: var(--ink);
+    padding: 9px 10px;
+    border-radius: 6px;
   }
-  .tier-toggle button.active { background: var(--ink); color: #fff; }
-  .tier-note { font-size: 13px; color: var(--ink-2); flex: 1; min-width: 260px; }
-  .tier-note b { color: var(--ink); }
+  .signin-menu button:hover { background: var(--wash); }
+  .signin-menu button.active { color: var(--green-dark); background: var(--green-wash); }
+  .signin-menu button.active::after { content: "\2713"; font-weight: 800; }
+
+  /* ---- tier toast ---- */
+  .toast {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    max-width: 420px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--green);
+    border-radius: 8px;
+    box-shadow: 0 16px 40px -16px rgba(22,25,29,0.45);
+    padding: 14px 16px;
+    z-index: 200;
+    font-size: 13.5px;
+    color: var(--ink-2);
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .toast.show { display: flex; }
+  .toast b { color: var(--ink); }
+  .toast-close {
+    border: none;
+    background: none;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--ink-3);
+    cursor: pointer;
+    padding: 0 0 0 4px;
+  }
+  .toast-close:hover { color: var(--ink); }
 
   /* ---- header ---- */
   header.site {
@@ -525,18 +559,6 @@
 
 <div class="demo-ribbon"><strong>Concept mockup.</strong> All products, prices, and stock levels are placeholder demo data for discussion.</div>
 
-<div class="tier-bar">
-  <div class="wrap">
-    <span class="tier-label">Demo: view site as</span>
-    <div class="tier-toggle" role="tablist">
-      <button class="active" data-tier-btn="guest">Guest</button>
-      <button data-tier-btn="customer">Customer</button>
-      <button data-tier-btn="franchise">Franchise</button>
-    </div>
-    <span class="tier-note" id="tierNote"><b>Guest view:</b> anyone can browse the catalog, but prices are hidden until an account is approved. Pricing stays protected.</span>
-  </div>
-</div>
-
 <header class="site">
   <div class="wrap">
     <a class="logo" href="#">
@@ -554,7 +576,15 @@
       Search 2,400+ products…
     </div>
     <div class="header-cta">
-      <a class="btn" href="#">Sign in</a>
+      <div class="signin-wrap">
+        <a class="btn" href="#" id="signinBtn">Sign in <span style="font-size:10px">&#9662;</span></a>
+        <div class="signin-menu" id="signinMenu">
+          <div class="menu-label">Demo: view site as</div>
+          <button data-tier-btn="guest" class="active">Guest</button>
+          <button data-tier-btn="customer">Customer</button>
+          <button data-tier-btn="franchise">Franchise</button>
+        </div>
+      </div>
       <a class="btn primary" href="#ordering">Request an account</a>
     </div>
   </div>
@@ -859,6 +889,11 @@
   </div>
 </footer>
 
+<div class="toast" id="tierToast" role="status">
+  <div id="tierToastText"></div>
+  <button class="toast-close" aria-label="Dismiss">&times;</button>
+</div>
+
 <script>
   /* ---------- tier switching ---------- */
   var notes = {
@@ -876,15 +911,33 @@
     currentTier = tier;
     document.body.dataset.tier = tier;
     document.querySelectorAll('[data-tier-btn]').forEach(function (b) { b.classList.toggle('active', b.dataset.tierBtn === tier); });
-    document.getElementById('tierNote').innerHTML = notes[tier];
     var gn = document.getElementById('gridNote');
     if (gn) gn.textContent = gridNotes[tier];
     document.querySelectorAll('[data-tier-show]').forEach(function (el) {
       el.style.display = el.dataset.tierShow.split(' ').indexOf(tier) > -1 ? 'inline-block' : 'none';
     });
   }
+  function showToast(tier) {
+    document.getElementById('tierToastText').innerHTML = notes[tier];
+    document.getElementById('tierToast').classList.add('show');
+  }
   document.querySelectorAll('[data-tier-btn]').forEach(function (btn) {
-    btn.addEventListener('click', function () { applyTier(btn.dataset.tierBtn); });
+    btn.addEventListener('click', function () {
+      applyTier(btn.dataset.tierBtn);
+      showToast(btn.dataset.tierBtn);
+      document.getElementById('signinMenu').classList.remove('open');
+    });
+  });
+  document.getElementById('signinBtn').addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('signinMenu').classList.toggle('open');
+  });
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.signin-wrap')) document.getElementById('signinMenu').classList.remove('open');
+  });
+  document.querySelector('#tierToast .toast-close').addEventListener('click', function () {
+    document.getElementById('tierToast').classList.remove('show');
   });
 
   /* ---------- category page demo data ---------- */
